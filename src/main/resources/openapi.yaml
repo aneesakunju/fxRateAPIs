@@ -1,0 +1,260 @@
+openapi: 3.0.1
+info:
+  title: FX Rates
+  description: FX Rates Service
+  version: 1.0.0
+
+paths:
+  /fx-rates/v1/currencies:
+    get:
+      summary: Get all currencies codes
+      operationId: getAllCurrencies
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CurrencyCodeV1'
+        "400":
+          $ref: "#/components/responses/400"
+        "500":
+          $ref: "#/components/responses/500"
+
+  /fx-rates/v1/{baseCurrency}/{targetCurrency}:
+    get:
+      summary: Get the FX rate between two currencies
+      description: |
+        Get the latest FX rate between two currencies. If the "date" query parameter is provided, 
+        the FX rate for that date is returned. Otherwise, the latest FX rate is returned.
+      operationId: getLatestFXRate
+      parameters:
+        - name: baseCurrency
+          in: path
+          description: Base currency
+          required: true
+          schema:
+            $ref: '#/components/schemas/CurrencyCodeV1'
+        - name: targetCurrency
+          in: path
+          description: Target currency
+          required: true
+          schema:
+            $ref: '#/components/schemas/CurrencyCodeV1'
+        - name: date
+          in: query
+          description: The date for which the FX rate is required
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FxRateV1'
+        "400":
+          $ref: "#/components/responses/400"
+        "500":
+          $ref: "#/components/responses/500"
+  "/fx-rates/v1/{baseCurrency}/{targetCurrency}/history":
+    get:
+      summary: Get the historical FX rates between two currencies
+      operationId: getHistoricalFXRates
+      parameters:
+        - name: baseCurrency
+          in: path
+          description: Base currency
+          required: true
+          schema:
+            $ref: '#/components/schemas/CurrencyCodeV1'
+        - name: targetCurrency
+          in: path
+          description: Target currency
+          required: true
+          schema:
+            $ref: '#/components/schemas/CurrencyCodeV1'
+        - name: startDate
+          in: query
+          description: Start date
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: End date
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FxRateV1'
+            text/csv:
+              schema:
+                type: string
+        "400":
+          $ref: "#/components/responses/400"
+        "500":
+          $ref: "#/components/responses/500"
+  "/fx-rates/v1/{baseCurrency}/{targetCurrency}/convert":
+    get:
+      summary: Convert an amount from one currency to another
+      operationId: convertCurrency
+      parameters:
+        - name: baseCurrency
+          in: path
+          description: Base currency
+          required: true
+          schema:
+            $ref: '#/components/schemas/CurrencyCodeV1'
+        - name: targetCurrency
+          in: path
+          description: Target currency
+          required: true
+          schema:
+            $ref: '#/components/schemas/CurrencyCodeV1'
+        - name: amount
+          in: query
+          description: Amount to convert
+          required: true
+          schema:
+            $ref: '#/components/schemas/AmountV1'
+        - name: date
+          in: query
+          description: The date of the FX rate to use for conversion. If not supplied the latest FX rate is used.
+          required: false
+          schema:
+            $ref: '#/components/schemas/CurrencyCodeV1'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConvertedAmountV1'
+
+        "400":
+          $ref: "#/components/responses/400"
+        "500":
+          $ref: "#/components/responses/500"
+components:
+  schemas:
+    AmountV1:
+      type: number
+    CurrencyCodeV1:
+      type: string
+      description: |
+        3-letter ISO 4217 currency code
+        Supported codes are: USD, EUR, GBP, JPY, CHF, CAD, AUD, NZD, CNY, SEK
+      minLength: 3
+      maxLength: 3
+    CurrencyV1:
+      type: object
+      properties:
+        code:
+          $ref: "#/components/schemas/CurrencyCodeV1"
+        name:
+          type: string
+      required:
+        - code
+        - name
+    FxRateV1:
+      type: object
+      properties:
+        baseCurrencyCode:
+          $ref: "#/components/schemas/CurrencyCodeV1"
+        targetCurrencyCode:
+          $ref: "#/components/schemas/CurrencyCodeV1"
+        rate:
+          description: the exchange rate between the base and target currency
+          type: number
+        effectiveDate:
+          description: Effective date of the FX rate as an ISO 8601 date
+          type: string
+          format: date
+      required:
+        - baseCurrency
+        - targetCurrency
+        - rate
+        - effectiveDate
+    ConvertedAmountV1:
+      type: object
+      properties:
+        base:
+          $ref: "#/components/schemas/CurrencyAmountV1"
+        target:
+          $ref: "#/components/schemas/CurrencyAmountV1"
+        fxRate:
+          $ref: '#/components/schemas/FxRateV1'
+      required:
+        - base
+        - target
+        - fxRate
+    CurrencyAmountV1:
+      type: object
+      properties:
+        currency:
+          $ref: '#/components/schemas/CurrencyV1'
+        amount:
+          $ref: '#/components/schemas/AmountV1'
+      required:
+        - currency
+        - amount
+    ErrorResponse:
+      properties:
+        status:
+          type: integer
+        errorMessage:
+          type: string
+      required:
+        - status
+        - errorMessage
+
+  responses:
+    400:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example: |-
+            {
+              "status" : 400,
+              "errorMessage" : "Bad Request"
+            }
+    404:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example: |-
+            {
+              "status" : 404,
+              "errorMessage" : "Not found"
+            }
+    500:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example: |-
+            {
+              "status" : 500,
+              "errorMessage" : "Internal Server Error"
+            }

@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: fx-rates
+
+server:
+  servlet:
+    context-path: /fx-rates/v1
